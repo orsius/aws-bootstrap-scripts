@@ -11,7 +11,7 @@ set -x
 # ##########################################################################
 
 # ## epel rhel 7 repository ## #
-yum install  https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
+#yum install  https://dl.fedoraproject.org/pub/epel/epel-release-latest-7.noarch.rpm -y
 
 # update server
 yum update -y
@@ -36,7 +36,27 @@ EOF
 
 yum install docker-engine -y --nogpgcheck
 yum install lvm2 -y
+fdisk -l
 
+pvcreate /dev/xvdb
+vgcreate docker /dev/xvdb
+lvcreate --wipesignatures y -n thinpool docker -l 95%VG
+lvcreate --wipesignatures y -n thinpoolmeta docker -l 1%VG
+lvconvert -y --zero n -c 512K --thinpool docker/thinpool --poolmetadata docker/thinpoolmeta
+
+mkdir /etc/systemd/system/docker.service.d
+tee /etc/systemd/system/docker.service.d/docker-thinpool.conf <<-'EOF'
+[Service]
+ExecStart=
+ExecStart=/usr/bin/dockerd --storage-driver=devicemapper --storage-opt=dm.thinpooldev=/dev/mapper/docker-thinpool --storage-opt=dm.use_deferred_removal=true --storage-opt=dm.use_deferred_deletion=true
+EOF
+
+systemctl daemon-reload
+systemctl start docker
+docker info
+# docker ps
+
+# ##########################################################################
 
 # install kubeadm
 cat << EOF > /etc/yum.repos.d/kubernetes.repo
