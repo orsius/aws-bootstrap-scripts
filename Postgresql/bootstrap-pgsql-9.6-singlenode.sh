@@ -23,9 +23,11 @@ yum install postgresql-server postgresql-contrib perl -y
 
 PGSQL_CUSTOM_DATA_DIR=/data/pgsql_data
 # create a custom data directory
-mkdir ${PGSQL_CUSTOM_DATA_DIR}
-# Give ownership to postgres user
-chown -R postgres:postgres ${PGSQL_CUSTOM_DATA_DIR}
+mkdir -p ${PGSQL_CUSTOM_DATA_DIR}
+
+rm -rf /var/lib/pgsql/
+ln -s /data/pgsql_data/ /var/lib/pgsql
+mv /var/lib/pgsql/* /data/pgsql_data/.
  
 #ONLY REQUIRED IF RUNNING SELINUX = ENFORCING
 #Tag type of folder to "postgresql_db_t" so that pgsql can read and write to it
@@ -48,21 +50,15 @@ cp /usr/lib/systemd/system/postgresql.service /etc/systemd/system/postgresql.ser
 # add custome variable(s)
 perl -pi.back -e 's/Environment\=PGDATA\=\/var\/lib\/pgsql\/data/Environment\=PGDATA\=\/data\/pgsql_data/g;' /etc/systemd/system/postgresql.service
 
-
 # ## modify postgresql config files ## #
 
 # remove the .bash_profile of the postgres user: (to avoid "export PGDATA=/superdry/data ")
 su - prostgres -c "mv ~/.bash_profile ${PGSQL_CUSTOM_DATA_DIR}/.bash_profile.origin"
 
-mv /var/lib/pgsql/* /data/pgsql_data/.
-rm -rf /var/lib/pgsql/
-rmdir: failed to remove '/var/lib/pgsql/': Directory not empty
-ln -s /data/pgsql_data/ /var/lib/pgsql
-
 # modify pg_hba.conf
 cd ${PGSQL_CUSTOM_DATA_DIR} && cp pg_hba.conf pg_hba.conf.orig
 # add the ip range of your network:
-echo "host    all             all             10.222.222.0/24            trust" >> pg_hba.conf
+echo "host    all             all             10.222.222.0/24            trust" >> ${PGSQL_CUSTOM_DATA_DIR}/pg_hba.conf
 # 	TYPE  DATABASE        USER            ADDRESS                 METHOD
 
 
@@ -74,6 +70,8 @@ cd /var/lib/pgsql/data/ && cp postgresql.conf postgresql.conf.orig
 echo "listen_addresses = '${HOSTNAME}' " >> ${PGSQL_CUSTOM_DATA_DIR}/postgresql.conf
 echo "log_directory = '${PGSQL_CUSTOM_DATA_DIR}/pg_log'" >> ${PGSQL_CUSTOM_DATA_DIR}/postgresql.conf          
 
+# Give ownership to postgres user
+chown -R postgres:postgres ${PGSQL_CUSTOM_DATA_DIR}
 
 # ## start and control service:
  systemctl enable postgresql.service
