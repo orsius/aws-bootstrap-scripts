@@ -1,5 +1,6 @@
 # aws-bootstrap-scripts
-Use these basics aws-bootstrap-scripts in order to Install the configuration of your choice on a RHEL7 linux server. &amp;&amp;
+<<<<<<<
+Use these basics aws-bootstrap-scripts in order to Install the configuration of your choice on a RHEL7 linux server.
 
 ## Requirements
 
